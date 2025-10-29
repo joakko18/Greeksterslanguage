@@ -2,15 +2,15 @@
 import { NextResponse } from 'next/server';
 import { supabaseServerClient } from '@/app/lib/supabase/server';
 
-// Define the expected parameters from the URL
-interface Context {
-    params: {
-        slug: string;
-    };
-}
+// NOTE: The custom 'Context' interface has been removed.
 
-export async function GET(request: Request, context: Context) {
-    const { slug } = context.params;
+// Define the expected parameters directly in the function signature.
+export async function GET(
+    request: Request, 
+    { params }: { params: { slug: string } } // <-- CORRECT TYPING for dynamic route segment
+) {
+    // Destructure the slug directly from the params object
+    const { slug } = params; 
 
     // 1. Get the language query parameter from the URL (e.g., ?lang=en)
     const { searchParams } = new URL(request.url);
@@ -21,6 +21,8 @@ export async function GET(request: Request, context: Context) {
     }
 
     if (!slug) {
+        // NOTE: This check is technically redundant for a dynamic route, 
+        // as the slug must exist for the route to be hit, but we keep it for safety.
         return NextResponse.json({ error: 'Missing article slug in path.' }, { status: 400 });
     }
 
