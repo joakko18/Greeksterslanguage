@@ -4,8 +4,39 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { useTranslation } from '@/app/i18n';
 import { defaultNS } from '@/app/i18n/settings';
+import { languages } from '@/app/i18n/settings';
 // IMPORT THE SECURE SERVER CLIENT HERE:
 import { supabaseServerClient } from '@/app/lib/supabase/server'; 
+
+// ----------------------------------------
+// 0. GENERATE STATIC PARAMS (ADDED FOR BUILD OPTIMIZATION)
+// ----------------------------------------
+/**
+ * Tells Next.js which paths (lng/slug combinations) to pre-render at build time.
+ * This is crucial for Static Site Generation (SSG) on dynamic routes.
+ */
+export async function generateStaticParams() {
+    // 1. Initialize Supabase client
+    const supabase = supabaseServerClient; 
+
+    // 2. Query all article slugs and languages
+    const { data: articles, error } = await supabase
+        .from('articles')
+        .select('lng, slug');
+        
+    if (error || !articles) {
+        // Log the error but return an empty array to allow the build to continue
+        console.error("Failed to fetch articles for static generation:", error);
+        return []; 
+    }
+    
+    // 3. Map the data to the expected format: [{ lng: 'en', slug: 'my-article' }, ...]
+    return articles.map(article => ({
+        lng: article.lng,
+        slug: article.slug,
+    }));
+}
+// ----------------------------------------
 
 // ----------------------------------------
 // 1. DEFINE TYPES
@@ -88,21 +119,17 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
                     </p>
                 </header>
 
-               {/* Featured Image */}
-{/* Use a fixed height (h-96 or h-[500px]) for a large, visible image container */}
-<div className="relative w-full h-96 md:h-[500px] mb-12 rounded-xl overflow-hidden shadow-2xl bg-gray-100"> 
-    <Image
-        src={article.image_url}
-        alt={article.title}
-        fill
-        // -----------------------------------------------------------------
-        // KEY CHANGE: Use 'contain' to show the whole image, no cropping
-        // -----------------------------------------------------------------
-        style={{ objectFit: 'contain' }}
-        sizes="100vw"
-        priority
-    />
-</div>
+                {/* Featured Image */}
+                <div className="relative w-full h-96 md:h-[500px] mb-12 rounded-xl overflow-hidden shadow-2xl bg-gray-100"> 
+                    <Image
+                        src={article.image_url}
+                        alt={article.title}
+                        fill
+                        style={{ objectFit: 'contain' }}
+                        sizes="100vw"
+                        priority
+                    />
+                </div>
 
                 {/* Article Content (Full Display) */}
                 <section className="article-content prose prose-lg max-w-none text-gray-800">
