@@ -1,4 +1,5 @@
 // app/[lng]/blog/[slug]/page.tsx
+// ...existing code...
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { useTranslation } from '@/app/i18n';
@@ -8,37 +9,25 @@ import { supabaseServerClient } from '@/app/lib/supabase/server';
 // ----------------------------------------
 // 0. GENERATE STATIC PARAMS
 // ----------------------------------------
-export async function generateStaticParams() {
+export async function generateStaticParams(): Promise<Array<{ lng: string; slug: string }>> {
   const supabase = supabaseServerClient;
 
-  const { data: articles, error } = await supabase
-    .from('articles')
-    .select('lng, slug');
+  const { data: articles, error } = await supabase.from('articles').select('lng, slug');
 
   if (error || !articles) {
     console.error('Failed to fetch articles for static generation:', error);
     return [];
   }
 
-  return articles.map((article) => ({
+  return articles.map((article: any) => ({
     lng: article.lng,
     slug: article.slug,
   }));
 }
 
 // ----------------------------------------
-// 1. TYPE DEFINITIONS
+// 1. DATA SHAPES
 // ----------------------------------------
-interface ArticleRouteParams {
-  lng: string;
-  slug: string;
-}
-
-// Page props: params may be a Promise (Next.js App Router)
-interface ArticleProps {
-  params: ArticleRouteParams | Promise<ArticleRouteParams>;
-}
-
 interface ArticleData {
   id: string;
   slug: string;
@@ -50,27 +39,32 @@ interface ArticleData {
 }
 
 // ----------------------------------------
-// 2. HELPER FUNCTIONS
+// 2. HELPERS
 // ----------------------------------------
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
-};
 
 // ----------------------------------------
 // 3. PAGE COMPONENT
+// Use inline props type to avoid conflicts with Next's PageProps constraint.
+// Next may pass params as a Promise, so accept both and await params.
 // ----------------------------------------
-export default async function ArticleDetailPage({ params }: ArticleProps) {
-  // Await params in case Next.js provides a Promise
+export default async function ArticleDetailPage({
+  params,
+}: {
+  params: { lng: string; slug: string } | Promise<{ lng: string; slug: string }>;
+}) {
+  // Await params in case Next provides a Promise
   const { lng, slug } = await params;
 
-  // Translation
+  // Translation (server-side)
   const { t } = await useTranslation(lng, defaultNS);
 
-  // Fetch article from Supabase
+  // Fetch the article from Supabase
   const { data, error } = await supabaseServerClient
     .from('articles')
     .select('*')
@@ -84,7 +78,7 @@ export default async function ArticleDetailPage({ params }: ArticleProps) {
     notFound();
   }
 
-  const article: ArticleData = data;
+  const article: ArticleData = data as ArticleData;
 
   return (
     <article className="py-16 md:py-24 bg-white text-gray-900">
@@ -132,12 +126,7 @@ export default async function ArticleDetailPage({ params }: ArticleProps) {
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              ></path>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
             {t('back_to_blog', 'Back to Blog')}
           </a>
@@ -146,3 +135,4 @@ export default async function ArticleDetailPage({ params }: ArticleProps) {
     </article>
   );
 }
+// ...existing code...
