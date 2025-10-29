@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseServerClient } from '@/app/lib/supabase/server';
 
-export async function GET(
-  request: Request,
-  { params }: { params: { slug: string } } // ✅ Inline type instead of Context interface
-) {
-  const { slug } = params;
+export async function GET(request: Request, context: any) {
+  const { params } = context ?? {};
+  const slug = params?.slug;
 
   // 1. Get the language query parameter from the URL (e.g., ?lang=en)
   const { searchParams } = new URL(request.url);
@@ -23,7 +21,7 @@ export async function GET(
     // 2. Query Supabase for the single article matching both slug AND language
     const { data: article, error } = await supabaseServerClient
       .from('articles')
-      .select('*') // Select ALL fields, as this is the detail page
+      .select('*')
       .eq('slug', slug)
       .eq('lang', lang)
       .limit(1)
@@ -40,7 +38,6 @@ export async function GET(
 
     // 3. Return the article
     return NextResponse.json(article, { status: 200 });
-
   } catch (error) {
     console.error('General API Error:', error);
     return NextResponse.json({ error: 'Internal server error during article fetching.' }, { status: 500 });
