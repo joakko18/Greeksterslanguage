@@ -1,69 +1,59 @@
-// app/[lng]/blog/[slug]/page.tsx
-
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { useTranslation } from '@/app/i18n';
 import { defaultNS } from '@/app/i18n/settings';
-import { languages } from '@/app/i18n/settings';
-// IMPORT THE SECURE SERVER CLIENT HERE:
+import { languages } from '@/app/i18n/settings'; 
 import { supabaseServerClient } from '@/app/lib/supabase/server'; 
 
 // ----------------------------------------
-// 0. GENERATE STATIC PARAMS (ADDED FOR BUILD OPTIMIZATION)
+// 0. GENERATE STATIC PARAMS (Keep this, it is essential)
 // ----------------------------------------
-/**
- * Tells Next.js which paths (lng/slug combinations) to pre-render at build time.
- * This is crucial for Static Site Generation (SSG) on dynamic routes.
- */
 export async function generateStaticParams() {
-    // 1. Initialize Supabase client
     const supabase = supabaseServerClient; 
 
-    // 2. Query all article slugs and languages
     const { data: articles, error } = await supabase
         .from('articles')
         .select('lng, slug');
         
     if (error || !articles) {
-        // Log the error but return an empty array to allow the build to continue
         console.error("Failed to fetch articles for static generation:", error);
         return []; 
     }
     
-    // 3. Map the data to the expected format: [{ lng: 'en', slug: 'my-article' }, ...]
     return articles.map(article => ({
         lng: article.lng,
         slug: article.slug,
     }));
 }
-// ----------------------------------------
 
 // ----------------------------------------
-// 1. DEFINE TYPES
+// 1. DEFINE TYPES (Clean, simple, non-conflicting names)
 // ----------------------------------------
-interface FullArticle {
+
+// Renamed interface for the component props to prevent conflicts
+interface ArticleRouteParams {
+    lng: string;
+    slug: string;
+}
+
+interface ArticleProps {
+    params: ArticleRouteParams;
+}
+
+// Redefine article structure here to ensure no external type pollution
+interface ArticleData {
     id: string; 
     slug: string;
     title: string;
     image_url: string;
     created_at: string;
-    content: string; // The full content
+    content: string;
     lang: string;
-}
-
-// Define the expected route parameters
-interface ArticlePageProps {
-    params: {
-        lng: string;
-        slug: string;
-    };
 }
 
 // ----------------------------------------
 // 2. HELPER FUNCTIONS
 // ----------------------------------------
-
-// Helper to format the date
 const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -73,35 +63,29 @@ const formatDate = (dateString: string) => {
 };
 
 // ----------------------------------------
-// 3. SERVER COMPONENT LOGIC (Simplified)
+// 3. SERVER COMPONENT LOGIC (Using the new, isolated ArticleProps)
 // ----------------------------------------
 
-// Server Component to fetch and display the article
-export default async function ArticleDetailPage({ params }: ArticlePageProps) {
+export default async function ArticleDetailPage({ params }: ArticleProps) {
     const { lng, slug } = params;
     
-    // Fetch translation data
     const { t } = await useTranslation(lng, defaultNS);
 
-    // --- 1. DIRECT Supabase Query (Simplified!) ---
-    // Query Supabase for the single article matching both slug AND language
     const { data, error } = await supabaseServerClient
         .from('articles')
-        .select('*') // Select ALL fields
-        .eq('slug', slug) // Filter by the unique slug from the path
-        .eq('lang', lng) // Filter by the language from the path
+        .select('*')
+        .eq('slug', slug)
+        .eq('lang', lng)
         .limit(1)
         .single();
         
     if (error || !data) {
         console.error("Supabase Article Fetch Error:", error);
-        // If article not found or a query error occurs, show 404
         notFound(); 
     }
 
-    const article: FullArticle = data;
-    // ----------------------------------------
-
+    const article: ArticleData = data;
+    
     return (
         <article className="py-16 md:py-24 bg-white text-gray-900">
             <div className="container mx-auto px-4 max-w-4xl">

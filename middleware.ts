@@ -29,4 +29,5 @@ export function middleware(request: NextRequest) {
 export const config = {
   // Matcher excludes API routes, Next static files, and common assets
   matcher: ['/((?!api|_next|favicon.ico|images|locales).*)'],
+  
 };
