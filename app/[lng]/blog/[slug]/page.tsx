@@ -34,9 +34,21 @@ interface ArticlePageProps {
   params: ArticlePageParams;
 }
 
+// Renamed interface for the component props to prevent conflicts
+interface ArticleRouteParams {
+  lng: string;
+  slug: string;
+}
+
+interface ArticleProps {
+  // Accept a params object OR a Promise of that object (Next can supply a Promise)
+  params: ArticleRouteParams | Promise<ArticleRouteParams>;
+}
+
 // 2. PAGE COMPONENT
-export default async function ArticleDetailPage({ params }: ArticlePageProps) {
-  const { lng, slug } = params;
+export default async function ArticleDetailPage({ params }: ArticleProps) {
+  // await params because Next may provide a Promise
+  const { lng, slug } = await params;
 
   const { t } = await useTranslation(lng, defaultNS);
 
