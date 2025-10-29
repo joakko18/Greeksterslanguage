@@ -8,28 +8,25 @@ const defaultLocale = 'en';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // --- ADD THESE LOGS ---
-  console.log(`[Middleware] Incoming request for path: ${pathname}`);
-  // --- END LOGS ---
-
+  // Check if the pathname already includes a locale
   const pathnameHasLocale = locales.some(
     (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
   );
 
   if (pathnameHasLocale) {
-    console.log(`[Middleware] Path "${pathname}" already has a locale. Proceeding.`); // Added for debugging
+    // Already localized — continue as normal
     return NextResponse.next();
   }
 
-  // --- ADD THESE LOGS ---
-  console.log(`[Middleware] No locale found in path "${pathname}". Redirecting to /${defaultLocale}${pathname}`);
-  // --- END LOGS ---
+  // Clone the URL (avoid mutating request.nextUrl directly)
+  const url = request.nextUrl.clone();
+  url.pathname = `/${defaultLocale}${pathname}`;
 
-  request.nextUrl.pathname = `/${defaultLocale}${pathname}`;
-  return NextResponse.redirect(request.nextUrl);
+  // Perform the redirect
+  return NextResponse.redirect(url);
 }
 
 export const config = {
-  // This matcher should cover all paths that are not static files or API routes
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|images|locales).*)'],
+  // Matcher excludes API routes, Next static files, and common assets
+  matcher: ['/((?!api|_next|favicon.ico|images|locales).*)'],
 };
