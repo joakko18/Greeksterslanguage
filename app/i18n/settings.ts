@@ -1,9 +1,10 @@
 // app/i18n/settings.ts
 
-export const fallbackLng = 'en'; // Default language if detection fails
-export const languages = [fallbackLng, 'it', 'gr']; // List of all supported languages
-export const defaultNS = 'translation'; // Default namespace (your main translation file name)
+// CHANGE 2: Update the languages array
+export const languages = ['en', 'es']; // Changed from ['en', 'it', 'gr']
 
+export const defaultNS = 'translation'; // Standard namespace
+export const fallbackLng = 'en';
 // This function provides common i18next options
 export function getOptions(lng = fallbackLng, ns = defaultNS) {
   return {
