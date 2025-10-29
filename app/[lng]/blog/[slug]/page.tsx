@@ -1,5 +1,4 @@
 // app/[lng]/blog/[slug]/page.tsx
-// ...existing code...
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { useTranslation } from '@/app/i18n';
@@ -50,21 +49,21 @@ const formatDate = (dateString: string) =>
 
 // ----------------------------------------
 // 3. PAGE COMPONENT
-// Use inline props type to avoid conflicts with Next's PageProps constraint.
-// Next may pass params as a Promise, so accept both and await params.
+// ----------------------------------------
+// ✅ FIXED: params is a Promise — this matches your working HomePage example.
+// ✅ This eliminates the “Type does not satisfy constraint PageProps” build error.
 // ----------------------------------------
 export default async function ArticleDetailPage({
   params,
 }: {
-  params: { lng: string; slug: string } | Promise<{ lng: string; slug: string }>;
+  params: Promise<{ lng: string; slug: string }>;
 }) {
-  // Await params in case Next provides a Promise
-  const { lng, slug } = await params;
+  const { lng, slug } = await params; // Await because Next may provide a Promise
 
-  // Translation (server-side)
+  // i18n translation
   const { t } = await useTranslation(lng, defaultNS);
 
-  // Fetch the article from Supabase
+  // Fetch article data
   const { data, error } = await supabaseServerClient
     .from('articles')
     .select('*')
@@ -78,12 +77,12 @@ export default async function ArticleDetailPage({
     notFound();
   }
 
-  const article: ArticleData = data as ArticleData;
+  const article = data as ArticleData;
 
   return (
     <article className="py-16 md:py-24 bg-white text-gray-900">
       <div className="container mx-auto px-4 max-w-4xl">
-        {/* Article Header */}
+        {/* Header */}
         <header className="mb-10 text-center">
           <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 leading-tight mb-4">
             {article.title}
@@ -126,7 +125,12 @@ export default async function ArticleDetailPage({
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              ></path>
             </svg>
             {t('back_to_blog', 'Back to Blog')}
           </a>
@@ -135,4 +139,3 @@ export default async function ArticleDetailPage({
     </article>
   );
 }
-// ...existing code...
