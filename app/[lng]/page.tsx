@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import Image from 'next/image';
 
 import AdminLinkButton from '../components/UI/AdminLinkButton';
+
 import ImageCarousel from '../components/UI/ImageCarousel';
 import ScrollReveal from '../components/UI/ScrollReveal';
 import ProjectCard from '../components/UI/ProjectCard';
@@ -45,10 +46,7 @@ export default async function HomePage({ params }: { params: Promise<{ lng: stri
         }}
       >
         <div className="absolute top-5 right-5 z-40">
-          <AdminLinkButton 
-              lng={lng} 
-              text={t('admin_button_text', 'Admin Dashboard')} 
-          />
+          <AdminLinkButton lng={lng} text={t('admin_panel_button_text')} />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-white-500 to-transparent opacity-60"></div>
         <div className="relative z-10 text-white container mx-auto px-4">

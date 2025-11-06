@@ -12,67 +12,72 @@ import Analytics from '../components/Analytics';
 import StickyHeader from '../components/UI/StickyHeader'; // <<< NEW IMPORT
 // 🎯 NEW IMPORT: Import the LanguageSwitcher component
 import LanguageSwitcher from '../components/LanguageSwitcher'; 
+// 🔑 CRITICAL NEW IMPORT: Import the client wrapper component
+import ProviderWrapper from '../ProviderWrapper'; 
 
 const inter = Inter({ subsets: ['latin'] });
 
 export async function generateStaticParams() {
-  return languages.map((lng) => ({ lng }));
+    return languages.map((lng) => ({ lng }));
 }
 
 interface RootLayoutProps {
-  children: React.ReactNode;
-  params: Promise<{ lng: string }>;
+    children: React.ReactNode;
+    params: Promise<{ lng: string }>;
 }
 
 export default async function RootLayout({ children, params }: RootLayoutProps) {
-  const { lng } = await params;
+    const { lng } = await params;
 
-  return (
-    <html lang={lng} dir={dir(lng)} key={lng}>
-      {/* === CHANGE: Added bg-white class to the body tag === */}
-      <body className={`${inter.className} bg-white`}>
-        <FloatingModalButton lng={lng} />
-        <div className="flex flex-col min-h-screen">
-          
-          {/* === STICKY HEADER === */}
-          <StickyHeader lng={lng} /> 
+    return (
+        <html lang={lng} dir={dir(lng)} key={lng}>
+            {/* === CHANGE: Added bg-white class to the body tag === */}
+            <body className={`${inter.className} bg-white`}>
+                
+                {/* 🔑 WRAPPER INTEGRATION: All client components needing auth state must be inside this wrapper. */}
+                <ProviderWrapper>
+                    
+                    <FloatingModalButton lng={lng} />
+                    <div className="flex flex-col min-h-screen">
+                        
+                        {/* === STICKY HEADER === */}
+                        <StickyHeader lng={lng} /> 
 
-          {/* 🎯 PLACEMENT: Add the LanguageSwitcher here. 
-             If you want it visible only when scrolling, place it inside StickyHeader.
-             I'll place it at the top level for demonstration, wrapped in a fixed position div
-             to keep it accessible, but this may overlap with the header. 
-             The best practice is to put it inside the <StickyHeader /> component.
-          */}
-          <div className="fixed top-24 right-4 z-50 md:top-6 md:right-6">
-              <LanguageSwitcher lng={lng} />
-          </div>
+                        {/* 🎯 PLACEMENT: Add the LanguageSwitcher here. */}
+                        <div className="fixed top-24 right-4 z-50 md:top-6 md:right-6">
+                            <LanguageSwitcher lng={lng} />
+                        </div>
 
 
-          <main className="flex-grow pt-[88px]"> {/* <<< ADDED PADDING-TOP HERE */}
-            {children}
-          </main>
+                        <main className="flex-grow pt-[88px]">
+                            {children}
+                        </main>
 
-          {/* Pass the id to the Footer component */}
-          <Footer lng={lng} id="footer-contact" />
-          
-        </div>
-        <Analytics /> {/* Add the Analytics component here */}
-      </body>
-    </html>
-  );
+                        {/* Pass the id to the Footer component */}
+                        <Footer lng={lng} id="footer-contact" />
+                        
+                    </div>
+                
+                </ProviderWrapper>
+                {/* End of ProviderWrapper */}
+                
+                <Analytics /> {/* Add the Analytics component here */}
+            </body>
+        </html>
+    );
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ lng: string }> }): Promise<Metadata> {
-  const { lng } = await params;
-  const { t } = await useTranslation(lng);
-  return {
-    title: t('home_page_title'),
-    description: t('home_page_description'),
-     icons: {
-    icon: [
-      { url: '/favicon.ico', type: 'image/x-icon' }, // For browser tab
-      { url: '/icon.png', type: 'image/png' },       // For Google search results
-    ],
-  },
-  };
+    const { lng } = await params;
+    const { t } = await useTranslation(lng);
+    return {
+        title: t('home_page_title'),
+        description: t('home_page_description'),
+        icons: {
+            icon: [
+                { url: '/favicon.ico', type: 'image/x-icon' }, // For browser tab
+                { url: '/icon.png', type: 'image/png' },       // For Google search results
+            ],
+        },
+    };
 }
