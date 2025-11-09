@@ -1,28 +1,34 @@
-// app/[lng]/panel/layout.tsx
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import React from 'react';
+import type { ReactNode } from 'react';
+
+// 🔑 REMOVED: import type { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/cookies';
+
+interface PanelLayoutProps {
+  children: ReactNode;
+  params: { lng: string };
+}
 
 export default async function PanelLayout({
   children,
   params,
-}: {
-  children: React.ReactNode;
-  params: { lng: string }; 
-}) {
+}: PanelLayoutProps) {
   
-  // 🔑 FIX 1: AWAIT cookies(). This satisfies the specific error in your environment
-  // and resolves the Promise type, allowing you to use the .get() method.
-  const cookieStore = await cookies();
+  // 1. AWAIT the cookies() function. 
+  // We use 'await' to satisfy the VSC TypeScript check that the returned Promise is resolved.
+  // We let TypeScript infer the correct type instead of manually importing an internal type.
+  const cookieStore = await cookies(); 
   
-  // FIX 2: Keep the params workaround to avoid the "sync dynamic APIs" runtime error.
-  const getParams = async () => params;
-  const { lng: currentLocale } = await getParams();
+  // 2. Await params before destructuring 'lng'.
+  // This satisfies the Next.js runtime check for using dynamic APIs synchronously.
+  const resolvedParams = await Promise.resolve(params);
+  const { lng: currentLocale } = resolvedParams;
 
-  // 🔑 CRITICAL FIX: Read the simple, client-set token flag
+  // 3. Read the token flag using the resolved cookie object.
   const accessToken = cookieStore.get('supabase-temp-token')?.value;
 
-  // 3. Protection Check
+  // 4. Protection Check
   if (!accessToken) { 
     console.log(`[FUNCTIONAL CHECK] No 'supabase-temp-token' found. Redirecting to /${currentLocale}`);
     const loginPath = `/${currentLocale}`;
