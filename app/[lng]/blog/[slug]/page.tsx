@@ -1,31 +1,41 @@
 // app/[lng]/blog/[slug]/page.tsx
+
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { useTranslation } from '@/app/i18n';
 import { defaultNS } from '@/app/i18n/settings';
-import { supabaseServerClient } from '@/app/lib/supabase/server';
+// 🔑 IMPORT THE SAFE GETTER FUNCTION
+import { getSupabaseServerClient } from '@/app/lib/supabase/server'; 
+// NOTE: We no longer rely on the synchronous export 'supabaseServerClient'
 
 // ----------------------------------------
 // 0. GENERATE STATIC PARAMS
 // ----------------------------------------
 export async function generateStaticParams(): Promise<Array<{ lng: string; slug: string }>> {
-  const supabase = supabaseServerClient;
+    try {
+        // 🔑 Use the safe getter function here
+        const supabase = getSupabaseServerClient(); 
 
-  const { data: articles, error } = await supabase.from('articles').select('lng, slug');
+        const { data: articles, error } = await supabase.from('articles').select('lang, slug'); // Changed lng to lang to match data shape
 
-  if (error || !articles) {
-    console.error('Failed to fetch articles for static generation:', error);
-    return [];
-  }
+        if (error || !articles) {
+            console.error('Supabase DB Error fetching slugs for SSG:', error);
+            return []; // Prevent build crash if DB query fails
+        }
 
-  return articles.map((article: any) => ({
-    lng: article.lng,
-    slug: article.slug,
-  }));
+        return articles.map((article: any) => ({
+            lng: article.lang, // Use article.lang to match the column name
+            slug: article.slug,
+        }));
+    } catch (e) {
+        // 🔑 CRITICAL: Catch errors from getSupabaseServerClient (missing Vercel keys)
+        console.error('Critical Error in generateStaticParams (Missing Keys?):', e);
+        return []; // Prevents build crash
+    }
 }
 
 // ----------------------------------------
-// 1. DATA SHAPES
+// 1. DATA SHAPES (No change needed here)
 // ----------------------------------------
 interface ArticleData {
   id: string;
@@ -38,7 +48,7 @@ interface ArticleData {
 }
 
 // ----------------------------------------
-// 2. HELPERS
+// 2. HELPERS (No change needed here)
 // ----------------------------------------
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString('en-US', {
@@ -48,23 +58,23 @@ const formatDate = (dateString: string) =>
   });
 
 // ----------------------------------------
-// 3. PAGE COMPONENT
-// ----------------------------------------
-// ✅ FIXED: params is a Promise — this matches your working HomePage example.
-// ✅ This eliminates the “Type does not satisfy constraint PageProps” build error.
+// 3. PAGE COMPONENT (Update client access)
 // ----------------------------------------
 export default async function ArticleDetailPage({
   params,
 }: {
   params: Promise<{ lng: string; slug: string }>;
 }) {
-  const { lng, slug } = await params; // Await because Next may provide a Promise
+  const { lng, slug } = await params;
 
   // i18n translation
   const { t } = await useTranslation(lng, defaultNS);
 
+  // 🔑 Use the safe getter function here
+  const supabase = getSupabaseServerClient(); 
+
   // Fetch article data
-  const { data, error } = await supabaseServerClient
+  const { data, error } = await supabase
     .from('articles')
     .select('*')
     .eq('slug', slug)
@@ -80,6 +90,7 @@ export default async function ArticleDetailPage({
   const article = data as ArticleData;
 
   return (
+    // ... rest of the component remains unchanged
     <article className="py-16 md:py-24 bg-white text-gray-900">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header */}
