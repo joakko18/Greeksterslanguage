@@ -1,16 +1,21 @@
-// app/api/articles/count/route.ts
+// app/api/articles/count/route.ts (Corrected)
 
-import { supabaseServerClient } from '@/app/lib/supabase/server';
+// 🔑 IMPORT THE SAFE GETTER FUNCTION
+import { getSupabaseServerClient } from '@/app/lib/supabase/server';
 import { NextResponse } from 'next/server';
+
+// 💡 Recommended for API routes that fetch fresh data
+export const dynamic = 'force-dynamic';
 
 /**
  * GET handler for fetching the total count of articles in the database.
- * This is highly optimized by using the 'count' option directly in the query.
  */
 export async function GET() {
-    const supabase = supabaseServerClient;
-
+    
     try {
+        // 🔑 Initialize the Supabase client safely inside the function
+        const supabase = getSupabaseServerClient(); 
+        
         // Use select with a count option to ONLY get the count, not the data rows.
         const { count, error } = await supabase
             .from('articles')
@@ -25,6 +30,8 @@ export async function GET() {
         return NextResponse.json({ count: count ?? 0 });
 
     } catch (error) {
+        // This catch block now also safely handles the error if environment variables 
+        // are missing when getSupabaseServerClient() is called at runtime.
         console.error("Unexpected error in article count API route:", error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }

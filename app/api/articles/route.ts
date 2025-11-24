@@ -1,10 +1,8 @@
 // app/api/articles/route.ts
+
 import { NextResponse } from 'next/server';
-// Ensure the import path below is correct:
-import { supabaseServerClient, ARTICLE_IMAGE_BUCKET } from '@/app/lib/supabase/server'; 
+import { getSupabaseServerClient, ARTICLE_IMAGE_BUCKET } from '@/app/lib/supabase/server'; 
 import slugify from 'slugify'; 
-
-
 
 // Configuration to handle file uploads (disables Next.js default body parser)
 export const config = {
@@ -13,13 +11,18 @@ export const config = {
     },
 };
 
-// Set to nodejs runtime for file stream access when handling FormData
+// 💡 NOTE: These are kept because handling FormData streaming often requires the 'nodejs' runtime, 
+// and dynamic routing is used to prevent aggressive caching of the API response.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
     try {
-        // 1. Get FormData from the request
+        // 🔑 1. INITIALIZE CLIENT SAFELY INSIDE THE FUNCTION
+        const supabase = getSupabaseServerClient(); 
+        // --------------------------------------------------
+        
+        // 2. Get FormData from the request
         const formData = await request.formData();
         const title = formData.get('title') as string;
         const content = formData.get('content') as string;
@@ -35,10 +38,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Featured image file is required.' }, { status: 400 });
         }
 
-        // 2. Normalize Slug
+        // 3. Normalize Slug
         slug = slugify(slug, { lower: true, strict: true });
         
-        // 3. Image Upload to Supabase Storage
+        // 4. Image Upload to Supabase Storage
         const fileExtension = imageFile.name.split('.').pop();
         // Create a unique file path: lang/slug-timestamp.ext
         const filePath = `${lang}/${slug}-${Date.now()}.${fileExtension}`;
@@ -46,7 +49,7 @@ export async function POST(request: Request) {
         // Convert File to Buffer for Supabase upload
         const imageBuffer = Buffer.from(await imageFile.arrayBuffer());
 
-        const { error: uploadError } = await supabaseServerClient.storage
+        const { error: uploadError } = await supabase.storage // 🔑 USE LOCAL INSTANCE
             .from(ARTICLE_IMAGE_BUCKET)
             .upload(filePath, imageBuffer, {
                 contentType: imageFile.type,
@@ -59,13 +62,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Failed to upload image. Check bucket name/permissions.' }, { status: 500 });
         }
 
-        // 4. Get the public URL for the uploaded image
-        const { data: { publicUrl } } = supabaseServerClient.storage
+        // 5. Get the public URL for the uploaded image
+        const { data: { publicUrl } } = supabase.storage // 🔑 USE LOCAL INSTANCE
             .from(ARTICLE_IMAGE_BUCKET)
             .getPublicUrl(filePath);
 
-        // 5. Insert new article record into the 'articles' table
-        const { data, error: dbError } = await supabaseServerClient
+        // 6. Insert new article record into the 'articles' table
+        const { data, error: dbError } = await supabase // 🔑 USE LOCAL INSTANCE
             .from('articles')
             .insert({
                 title,
@@ -79,12 +82,12 @@ export async function POST(request: Request) {
 
         if (dbError) {
              // Rollback: If DB insert fails (e.g., due to slug/lang conflict), delete the uploaded image
-             await supabaseServerClient.storage.from(ARTICLE_IMAGE_BUCKET).remove([filePath]);
+             await supabase.storage.from(ARTICLE_IMAGE_BUCKET).remove([filePath]); // 🔑 USE LOCAL INSTANCE
              console.error('Supabase DB Insert Error:', dbError);
              return NextResponse.json({ error: 'Failed to save article data. Possible slug/language conflict.' }, { status: 500 });
         }
 
-        // 6. Success
+        // 7. Success
         return NextResponse.json({ 
             message: 'Article published successfully!', 
             slug: data.slug 
@@ -97,11 +100,15 @@ export async function POST(request: Request) {
 }
 
 // ------------------------------------------------------------------
-// --- NEW LOGIC: GET ALL ARTICLES FOR BLOG LIST PAGE ---
+// --- GET ALL ARTICLES FOR BLOG LIST PAGE ---
 // ------------------------------------------------------------------
 
 export async function GET(request: Request) {
-    // 1. Get the language query parameter from the URL (e.g., ?lang=en)
+    // 🔑 1. INITIALIZE CLIENT SAFELY INSIDE THE FUNCTION
+    const supabase = getSupabaseServerClient(); 
+    // --------------------------------------------------
+
+    // 2. Get the language query parameter from the URL (e.g., ?lang=en)
     const { searchParams } = new URL(request.url);
     const lang = searchParams.get('lang');
 
@@ -110,8 +117,8 @@ export async function GET(request: Request) {
     }
 
     try {
-        // 2. Query Supabase for articles matching the language
-        const { data: articles, error } = await supabaseServerClient
+        // 3. Query Supabase for articles matching the language
+        const { data: articles, error } = await supabase // 🔑 USE LOCAL INSTANCE
             .from('articles')
             .select('slug, title, image_url, created_at, content') // Select all necessary fields
             .eq('lang', lang) // Filter by language
@@ -122,7 +129,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Failed to fetch articles from database.' }, { status: 500 });
         }
         
-        // 3. Simple response with article data
+        // 4. Simple response with article data
         return NextResponse.json(articles, { status: 200 });
 
     } catch (error) {
@@ -131,10 +138,15 @@ export async function GET(request: Request) {
     }
 }
 
-// --- NEW LOGIC: DELETE ARTICLE ---
+// ------------------------------------------------------------------
+// --- DELETE ARTICLE ---
 // ------------------------------------------------------------------
 
 export async function DELETE(request: Request) {
+    // 🔑 1. INITIALIZE CLIENT SAFELY INSIDE THE FUNCTION
+    const supabase = getSupabaseServerClient(); 
+    // --------------------------------------------------
+    
     const { searchParams } = new URL(request.url);
     const articleId = searchParams.get('id');
 
@@ -143,8 +155,8 @@ export async function DELETE(request: Request) {
     }
 
     try {
-        // 1. First, fetch the article data to get the image_url and slug
-        const { data: article, error: fetchError } = await supabaseServerClient
+        // 2. First, fetch the article data to get the image_url and slug
+        const { data: article, error: fetchError } = await supabase // 🔑 USE LOCAL INSTANCE
             .from('articles')
             .select('slug, lang, image_url')
             .eq('id', articleId)
@@ -159,8 +171,8 @@ export async function DELETE(request: Request) {
         // We need to parse the image_url to get the path in storage
         const filePathSegment = article.image_url.split(`${ARTICLE_IMAGE_BUCKET}/`)[1];
         
-        // 2. Delete the article record from the database
-        const { error: dbError } = await supabaseServerClient
+        // 3. Delete the article record from the database
+        const { error: dbError } = await supabase // 🔑 USE LOCAL INSTANCE
             .from('articles')
             .delete()
             .eq('id', articleId);
@@ -170,9 +182,9 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'Failed to delete article data.' }, { status: 500 });
         }
 
-        // 3. Delete the associated image from storage (Crucial cleanup step!)
+        // 4. Delete the associated image from storage (Crucial cleanup step!)
         if (filePathSegment) {
-             const { error: storageError } = await supabaseServerClient.storage
+             const { error: storageError } = await supabase.storage // 🔑 USE LOCAL INSTANCE
                  .from(ARTICLE_IMAGE_BUCKET)
                  .remove([filePathSegment]);
 
@@ -182,7 +194,7 @@ export async function DELETE(request: Request) {
              }
         }
         
-        // 4. Success
+        // 5. Success
         return NextResponse.json({ message: 'Article and associated image deleted successfully.' }, { status: 200 });
 
     } catch (error) {

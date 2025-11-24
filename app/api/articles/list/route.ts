@@ -1,6 +1,6 @@
-import { supabaseServerClient } from '@/app/lib/supabase/server';// app/api/articles/list/route.ts
+// app/api/articles/list/route.ts (Corrected)
 
-
+import { getSupabaseServerClient } from '@/app/lib/supabase/server'; // 🔑 SAFE IMPORT
 import { NextResponse } from 'next/server';
 
 // Interface for the data you are fetching
@@ -10,16 +10,19 @@ interface MinimalArticle {
     lang: string | null;
 }
 
+// 💡 Recommended for API routes that fetch fresh data
+export const dynamic = 'force-dynamic';
+
 /**
  * GET handler for fetching a minimal list of articles for the ArticleDeleter component.
- * This route is highly optimized to only return id, title, and lang.
  */
 export async function GET(request: Request) {
-    // 🎯 Use your specific server client import
-    // 'supabaseServerClient' is a SupabaseClient instance — do not call it as a function.
-    const supabase = supabaseServerClient;
-
+    
     try {
+        // 🔑 Initialize the Supabase client safely inside the function
+        const supabase = getSupabaseServerClient();
+        // --------------------------------------------------
+
         // Fetch ONLY the columns required: id, title, lang
         const { data, error } = await supabase
             .from('articles')
@@ -37,6 +40,7 @@ export async function GET(request: Request) {
         return NextResponse.json(minimalArticles);
 
     } catch (error) {
+        // This catch block will now safely handle the environment variable crash on Vercel
         console.error("Unexpected error in minimal API route:", error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
